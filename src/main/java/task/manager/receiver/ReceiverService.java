@@ -4,17 +4,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
+import task.manager.cofig.Topics;
 
 import java.util.LinkedHashSet;
 
-@Service
+import static task.manager.cofig.Topics.SUMMARY_TOPIC;
+import static task.manager.receiver.Command.*;
+
 public class ReceiverService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReceiverService.class);
-    public static final String ADD_COMMAND = "ADD ";
-    public static final String REMOVE_COMMAND = "REMOVE ";
-    public static final String SUMMARY_COMMAND = "SUMMARY";
-
     private final LinkedHashSet<String> availableTasks;
     private final StringRedisTemplate template;
 
@@ -25,19 +23,27 @@ public class ReceiverService {
     }
 
     public void receiveTask(String taskMessage) {
-        if (taskMessage.startsWith(ADD_COMMAND)) {
-            String addTaskdescription = taskMessage.substring(ADD_COMMAND.length());
+        if (taskMessage.startsWith(ADD.getCommandPrefix())) {
+            String addTaskdescription = taskMessage.substring(ADD.getCommandPrefix().length());
             System.out.println("Added task with description: \n<" + addTaskdescription + ">");
             availableTasks.add(addTaskdescription);
-        } else if (taskMessage.startsWith(REMOVE_COMMAND)) {
-            String removeTaskDescription = taskMessage.substring(REMOVE_COMMAND.length());
+        } else if (taskMessage.startsWith(TEST.getCommandPrefix())) {
+            System.out.println("Added dummy tasks: \n");
+            availableTasks.add("Learn AWS S3");
+            availableTasks.add("Learn Spark");
+            availableTasks.add("Learn Karate API");
+            availableTasks.add("Learn Maven");
+            availableTasks.add("Learn Java 8 features");
+        } else if (taskMessage.startsWith(REMOVE.getCommandPrefix())) {
+            String removeTaskDescription = taskMessage.substring(REMOVE.getCommandPrefix().length());
             if (availableTasks.contains(removeTaskDescription)) {
-                System.out.println("Added remove task with description: \n<" + removeTaskDescription + ">");
+                System.out.println("Task with the following name was removed: \n<" + removeTaskDescription + ">");
                 availableTasks.remove(removeTaskDescription);
             }
-        } else if (taskMessage.startsWith(SUMMARY_COMMAND)) {
+        } else if (taskMessage.startsWith(SUMMARY.getCommandPrefix())) {
             LOGGER.info("Sending summary...");
-            template.convertAndSend("summaryTopic", String.join("->-> ", availableTasks));
+            String delimeter = "->";
+            template.convertAndSend(SUMMARY_TOPIC.getRealTopicName(), delimeter + String.join("\n" + delimeter, availableTasks));
         } else {
             System.out.println("Can't recognize received command");
         }
